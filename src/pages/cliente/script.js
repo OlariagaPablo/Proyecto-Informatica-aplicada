@@ -58,13 +58,193 @@ function limpiarError() {
   }
 }
 
-async function validarExistenciaCliente(cliente) {
+// ---------- Validaciones ----------
+
+// Campos del cliente, en el orden en que aparecen en el formulario
+const CAMPOS_CLIENTE = [
+  'nombre',
+  'apellido',
+  'documento',
+  'direccion',
+  'telefono',
+  'email',
+  'codigo_postal'
+];
+
+// Reglas de validación por campo (los valores llegan ya recortados con trim)
+const REGLAS = {
+  nombre:         val => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\- ]{2,50}$/.test(val),
+  apellido:       val => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\- ]{2,50}$/.test(val),
+  documento:      val => /^\d{7,8}$/.test(val),
+  direccion:      val => val.length >= 3 && val.length <= 100,
+  telefono:       val => /^\+?\d{7,15}$/.test(val),
+  email:          val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+  codigo_postal:  val => /^\d{4,10}$/.test(val)
+};
+
+// Etiquetas legibles para los mensajes de duplicado
+const ETIQUETAS_CAMPOS = {
+  documento: 'documento',
+  telefono: 'teléfono',
+  email: 'correo electrónico'
+};
+
+function limpiarMensajeCampo(id) {
+  const err = document.getElementById(`err-${id}`);
+  if (!err) return;
+  const input = document.getElementById(id);
+  if (input?.dataset.errorDefault) {
+    err.textContent = input.dataset.errorDefault;
+  }
+}
+
+function setError(id, mensaje) {
+  const input = document.getElementById(id);
+  const err = document.getElementById(`err-${id}`);
+  if (!input) return;
+
+  input.classList.remove('valid');
+  input.classList.add('error');
+
+  // Re-dispara la animación de sacudida
+  input.style.animation = 'none';
+  void input.offsetHeight;
+  input.style.animation = '';
+
+  if (err) {
+    err.textContent = mensaje || input.dataset.errorDefault || err.textContent;
+    err.classList.add('visible');
+  }
+}
+
+function setValid(id) {
+  const input = document.getElementById(id);
+  const err = document.getElementById(`err-${id}`);
+  if (!input) return;
+
+  input.classList.remove('error');
+  input.classList.add('valid');
+
+  if (err) {
+    limpiarMensajeCampo(id);
+    err.classList.remove('visible');
+  }
+}
+
+function validarCampo(id) {
+  const input = document.getElementById(id);
+  if (!input) return true;
+
+  const regla = REGLAS[id.replace(/^mod-/, '')];
+  const valido = !!regla && regla(input.value.trim());
+
+  valido ? setValid(id) : setError(id);
+  return valido;
+}
+
+// Valida todos los campos del formulario visible. `prefijo` es "" para agregar
+// y "mod-" para modificar.
+function validarFormulario(prefijo = '') {
+  let valido = true;
+  let primerInvalido = null;
+
+  CAMPOS_CLIENTE.forEach(campo => {
+    const id = `${prefijo}${campo}`;
+    if (!document.getElementById(id)) return;
+
+    if (!validarCampo(id)) {
+      valido = false;
+      if (!primerInvalido) primerInvalido = document.getElementById(id);
+    }
+  });
+
+  if (primerInvalido) primerInvalido.focus();
+  return valido;
+}
+
+function inicializarValidaciones(prefijo = '') {
+  CAMPOS_CLIENTE.forEach(campo => {
+    const input = document.getElementById(`${prefijo}${campo}`);
+    const err = document.getElementById(`err-${prefijo}${campo}`);
+    if (!input) return;
+
+    // Guardamos el mensaje original para poder restaurarlo
+    if (err && !input.dataset.errorDefault) {
+      input.dataset.errorDefault = err.textContent.trim();
+    }
+
+    input.addEventListener('blur', () => validarCampo(input.id));
+    input.addEventListener('input', () => {
+      limpiarError();
+      if (input.classList.contains('error')) validarCampo(input.id);
+    });
+  });
+}
+
+function valorCampo(prefijo, campo) {
+  return (document.getElementById(`${prefijo}${campo}`)?.value || '').trim();
+}
+
+function obtenerDatosCliente(prefijo = '') {
+  return {
+    nombre: valorCampo(prefijo, 'nombre'),
+    apellido: valorCampo(prefijo, 'apellido'),
+    documento: valorCampo(prefijo, 'documento'),
+    direccion: valorCampo(prefijo, 'direccion'),
+    telefono: valorCampo(prefijo, 'telefono'),
+    email: valorCampo(prefijo, 'email').toLowerCase(),
+    codigo_postal: valorCampo(prefijo, 'codigo_postal')
+  };
+}
+
+function marcarCampoDuplicado(campo, prefijo = '') {
+  const etiqueta = ETIQUETAS_CAMPOS[campo] || campo;
+  mostrarError(`Ya existe un cliente con el mismo ${etiqueta}.`);
+
+  const id = `${prefijo}${campo}`;
+  const input = document.getElementById(id);
+  if (input) {
+    setError(id, `Ya existe un cliente con este ${etiqueta}.`);
+    input.focus();
+  }
+}
+
+function campoDesdeErrorSqlite(error) {
+  const mensaje = String(error?.message || '');
+  if (mensaje.includes('Cliente.documento')) return 'documento';
+  if (mensaje.includes('Cliente.email')) return 'email';
+  return null;
+}
+
+function manejarErrorGuardado(error, prefijo, accion) {
+  console.error(`Error al ${accion} cliente:`, error);
+
+  const campoDuplicado = campoDesdeErrorSqlite(error);
+  if (campoDuplicado) {
+    marcarCampoDuplicado(campoDuplicado, prefijo);
+    return;
+  }
+
+  mostrarError(`No se pudo ${accion} el cliente. Intentá de nuevo.`);
+}
+
+async function validarExistenciaCliente(cliente, idExcluir = null) {
   try {
     const lista = await window.api.getClientes();
+    const normalizar = valor => String(valor ?? '').trim().toLowerCase();
 
-    if (lista.some(c => c.documento === cliente.documento)) return "documento";
-    if (lista.some(c => c.telefono === cliente.telefono)) return "telefono";
-    if (lista.some(c => c.email === cliente.email)) return "email";
+    // Al modificar, el propio cliente no cuenta como duplicado
+    const otros = lista.filter(c => Number(c.id_cliente) !== Number(idExcluir));
+
+    for (const campo of ['documento', 'telefono', 'email']) {
+      const valor = normalizar(cliente[campo]);
+      // Los campos opcionales vacíos no pueden considerarse duplicados
+      if (!valor) continue;
+
+      if (otros.some(c => normalizar(c[campo]) === valor)) {
+        return campo;
+      }
+    }
 
     return false;
   } catch (error) {
@@ -133,21 +313,17 @@ function obtenerIdCliente() {
 // ---------- CLIENTE: Agregar ----------
 
 async function createCliente() {
-  const nuevoCliente = {
-    nombre: document.getElementById("nombre")?.value || '',
-    apellido: document.getElementById("apellido")?.value || '',
-    documento: document.getElementById("documento")?.value || '',
-    direccion: document.getElementById("direccion")?.value || '',
-    telefono: document.getElementById("telefono")?.value || '',
-    email: document.getElementById("email")?.value || '',
-    codigo_postal: document.getElementById("codigo_postal")?.value || null
-  };
+  limpiarError();
 
+  // 1) Validación de formato de todos los campos
+  if (!validarFormulario()) return;
+
+  const nuevoCliente = obtenerDatosCliente();
+
+  // 2) Validación de duplicados
   const campoDuplicado = await validarExistenciaCliente(nuevoCliente);
   if (campoDuplicado) {
-    let mensaje = "Ya existe un cliente con el mismo ";
-    mensaje += campoDuplicado.toUpperCase() + ".";
-    mostrarError(mensaje);
+    marcarCampoDuplicado(campoDuplicado);
     return;
   }
 
@@ -155,7 +331,7 @@ async function createCliente() {
     await window.api.addCliente(nuevoCliente);
     window.location.href = "cliente.html";
   } catch (error) {
-    console.error("Error al crear cliente:", error);
+    manejarErrorGuardado(error, '', 'guardar');
   }
 }
 
@@ -172,23 +348,30 @@ function initFormSubmit() {
 async function updateCliente() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("id");
-  if (!id) return console.error("ID de cliente no proporcionado en la URL");
+  if (!id) {
+    mostrarError("No se encontró el cliente a modificar.");
+    return;
+  }
 
-  const clienteActualizado = {
-    nombre: document.getElementById("mod-nombre")?.value || '',
-    apellido: document.getElementById("mod-apellido")?.value || '',
-    documento: document.getElementById("mod-documento")?.value || '',
-    direccion: document.getElementById("mod-direccion")?.value || '',
-    telefono: document.getElementById("mod-telefono")?.value || '',
-    email: document.getElementById("mod-email")?.value || '',
-    codigo_postal: document.getElementById("mod-codigo_postal")?.value || null
-  };
+  limpiarError();
+
+  // 1) Validación de formato de todos los campos
+  if (!validarFormulario('mod-')) return;
+
+  const clienteActualizado = obtenerDatosCliente('mod-');
+
+  // 2) Validación de duplicados, excluyendo el propio cliente
+  const campoDuplicado = await validarExistenciaCliente(clienteActualizado, id);
+  if (campoDuplicado) {
+    marcarCampoDuplicado(campoDuplicado, 'mod-');
+    return;
+  }
 
   try {
     await window.api.updateCliente(id, clienteActualizado);
     window.location.href = "cliente.html";
   } catch (error) {
-    console.error("Error al actualizar cliente:", error);
+    manejarErrorGuardado(error, 'mod-', 'actualizar');
   }
 }
 
@@ -212,7 +395,9 @@ function rellenarFormulario(cliente) {
 }
 
 function initFormSubmitModificar() {
-  document.getElementById("btn-guardar")?.addEventListener("click", (e) => {
+  const form = document.getElementById("form-modificar-cliente");
+
+  form?.addEventListener("submit", (e) => {
     e.preventDefault();
     updateCliente();
   });
@@ -243,6 +428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (pathname.includes("agregarCliente.html")) {
     console.log("En agregarCliente.html");
+    inicializarValidaciones();
     initFormSubmit();
   }
 
@@ -250,6 +436,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("En modificarCliente.html");
     const cliente = await obtenerClientePorId();
     if (cliente) rellenarFormulario(cliente);
+    inicializarValidaciones('mod-');
     initFormSubmitModificar();
   }
 
