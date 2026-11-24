@@ -13,21 +13,45 @@
     </header>
 
     <main>
-      <form id="form-agregar-proveedor" class="form-cliente">
-         <div id="mensaje-error-duplicado" style="color: red; display: none; margin-bottom: 15px;">
-        </div>
-        <h2>Proveedor &gt; Añadir</h2>
-        <input type="text" id="nombre" placeholder="Nombre" required>
-        <input type="text" id="direccion" placeholder="Dirección" required>
-        <input type="text" id="telefono" placeholder="Teléfono" required>
-        <input type="email" id="email" placeholder="Correo electrónico" required>
-        <input type="text" id="codigo_postal" placeholder="Código Postal" required>
+       <form id="form-agregar-proveedor" class="form-cliente" novalidate>
 
-        <div class="form-botones">
-          <button type="button" class="btn-cancelar" id="btn-cancelar">Cancelar</button>
-          <button type="submit" class="btn-guardar">Guardar</button>
-        </div> 
-      </form>
+      <h2>Proveedor &gt; Añadir</h2>
+
+      <!-- Banner error duplicado -->
+      <div id="mensaje-error-duplicado"></div>
+
+      <div class="campo">
+        <input type="text" id="nombre" placeholder="Nombre">
+        <span class="error-msg" id="err-nombre">El nombre no puede estar vacío.</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="direccion" placeholder="Dirección">
+        <span class="error-msg" id="err-direccion">Ingresá una dirección válida (Ej: Calle Falsa 123).</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="telefono" placeholder="Teléfono">
+        <span class="error-msg" id="err-telefono">Ingresá un número de teléfono válido.</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="email" placeholder="Correo electrónico">
+        <span class="error-msg" id="err-email">Ingresá un correo electrónico válido.</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="codigo_postal" placeholder="Código Postal">
+        <span class="error-msg" id="err-codigo_postal">Ingresá un código postal válido (4 a 10 dígitos).</span>
+      </div>
+
+      <div class="form-botones">
+        <button type="button" class="btn-cancelar" id="btn-cancelar">Cancelar</button>
+        <button type="submit" class="btn-guardar">Guardar</button>
+      </div>
+
+      <div class="toast" id="toast">✅ Proveedor guardado correctamente.</div>
+    </form>
     </main>
   </div>
 

@@ -1,7 +1,7 @@
   /* ==== ESTILOS DE CLIENTES ==== */
   body {
     font-family: Arial, sans-serif;
-    background: #fef6fb; /* rosado suave */
+    background: #fef6fb; 
     margin: 0;
     padding: 20px;
     color: #333;
@@ -299,3 +299,65 @@
 .btn-eliminar:hover {
   background: #a5d6a7;
 }
+
+.form-cliente input:focus {
+  border-color: #7b1fa2;
+  box-shadow: 0 0 0 3px rgba(123,31,162,0.15);
+}
+
+.form-cliente input.error {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229,62,62,0.15);
+  animation: shake 0.3s ease;
+}
+
+.form-cliente input.valid {
+  border-color: #38a169;
+  box-shadow: 0 0 0 3px rgba(56,161,105,0.15);
+}
+
+/* Mensaje de error bajo el input */
+.error-msg {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 5px;
+  font-size: 0.82rem;
+  color: #e53e3e;
+  font-weight: 500;
+}
+
+.error-msg.visible {
+  display: flex;
+  animation: fadeIn 0.2s ease;
+}
+
+.error-msg::before {
+  content: "⚠";
+  font-size: 0.9rem;
+}
+/* Banner de error duplicado */
+    #mensaje-error-duplicado {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background-color: #fce4e4;
+      color: #c00000;
+      border: 1px solid #c00000;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    #mensaje-error-duplicado.visible {
+      display: flex;
+    }
+
+    #mensaje-error-duplicado::before {
+      content: '⚠️';
+      font-size: 1.1em;
+      flex-shrink: 0;
+    }
