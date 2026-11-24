@@ -170,6 +170,62 @@ body {
   border-color: #7b1fa2;
 }
 
+/* Contenedor de cada campo + mensaje de error */
+.form-cliente .campo {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-cliente .campo input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Estados de validación */
+.form-cliente input.error {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.15);
+  animation: shake 0.3s ease;
+}
+
+.form-cliente input.valid {
+  border-color: #38a169;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.15);
+}
+
+/* Mensaje de error debajo del input */
+.error-msg {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 5px;
+  font-size: 0.82rem;
+  color: #e53e3e;
+  font-weight: 500;
+}
+
+.error-msg.visible {
+  display: flex;
+  animation: fadeIn 0.2s ease;
+}
+
+.error-msg::before {
+  content: "⚠";
+  font-size: 0.9rem;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-5px); }
+  50%      { transform: translateX(5px); }
+  75%      { transform: translateX(-3px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Botones */
 .form-botones {
   display: flex;
@@ -208,7 +264,7 @@ body {
 
 
 .error-notification {
-    /* Ocultar por defecto */
+    /* Ocultar por defecto (mostrarError() la muestra con display: flex) */
     display: none; 
     
     /* Colores y fondo (para errores) */
@@ -227,7 +283,6 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra sutil */
     
     /* Estructura (para posible icono) */
-    display: flex;
     align-items: center;
 }
 

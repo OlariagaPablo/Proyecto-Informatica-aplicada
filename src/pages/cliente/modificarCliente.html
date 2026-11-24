@@ -17,20 +17,49 @@
     </div>
 
     <!-- Formulario Modificar Cliente -->
-    <form class="form-cliente">
-       <input type="text" id="mod-nombre" placeholder="Nombre" class="mod-nombre" required>
-        <input type="text" id="mod-apellido" placeholder="Apellido" class="mod-apellido" required>
-        <input type="text" id="mod-documento" placeholder="Documento" class="mod-documento" required>
-        <input type="text" id="mod-direccion" placeholder="Dirección" class="mod-direccion" required>
-        <input type="text" id="mod-telefono" placeholder="Teléfono" class="mod-telefono" required>
-        <input type="email" id="mod-email" placeholder="Correo electrónico" class="mod-email" required>
-        <input type="text" id="mod-codigo_postal" placeholder="Código Postal" class="mod-codigo_postal" required>
+    <form id="form-modificar-cliente" class="form-cliente" novalidate>
+      <div id="mensaje-error-duplicado" class="error-notification"></div>
+
+      <div class="campo">
+        <input type="text" id="mod-nombre" placeholder="Nombre" class="mod-nombre">
+        <span class="error-msg" id="err-mod-nombre">Ingresá un nombre válido (mínimo 2 letras).</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="mod-apellido" placeholder="Apellido" class="mod-apellido">
+        <span class="error-msg" id="err-mod-apellido">Ingresá un apellido válido (mínimo 2 letras).</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="mod-documento" placeholder="Documento" class="mod-documento">
+        <span class="error-msg" id="err-mod-documento">Ingresá un DNI válido (7 u 8 dígitos).</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="mod-direccion" placeholder="Dirección" class="mod-direccion">
+        <span class="error-msg" id="err-mod-direccion">Ingresá una dirección válida (mínimo 3 caracteres).</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="mod-telefono" placeholder="Teléfono" class="mod-telefono">
+        <span class="error-msg" id="err-mod-telefono">Ingresá un teléfono válido (7 a 15 dígitos).</span>
+      </div>
+
+      <div class="campo">
+        <input type="email" id="mod-email" placeholder="Correo electrónico" class="mod-email">
+        <span class="error-msg" id="err-mod-email">Ingresá un correo electrónico válido.</span>
+      </div>
+
+      <div class="campo">
+        <input type="text" id="mod-codigo_postal" placeholder="Código Postal" class="mod-codigo_postal">
+        <span class="error-msg" id="err-mod-codigo_postal">Ingresá un código postal válido (4 a 10 dígitos).</span>
+      </div>
 
       <!-- Botones -->
       <div class="form-botones">
         <button type="button" class="btn-cancelar" onclick="window.history.back()">Cancelar</button>
         <button type="button" class="btn-cancelar" id="btn-eliminar">Eliminar</button>
-        <button type="button" class="btn-guardar" id="btn-guardar">Guardar Cambios</button>
+        <button type="submit" class="btn-guardar" id="btn-guardar">Guardar Cambios</button>
       </div>
     </form>
 

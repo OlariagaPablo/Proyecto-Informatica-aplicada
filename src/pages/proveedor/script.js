@@ -123,16 +123,73 @@ async function cargarProveedores() {
   obtenerIdProveedor();
 }
 
+// // ---------- CRUD: Validar  ----------
+
+const CAMPOS = ['nombre', 'direccion', 'telefono', 'email', 'codigo_postal'];
+
+const REGLAS = {
+  nombre:       val => val.length > 0,
+  email:        val => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+  telefono:     val => /^\+?\d{7,15}$/.test(val),
+  direccion:    val => /^[A-Za-zÁÉÍÓÚáéíóúñÑ.\s]+ \d{1,5}(.*)?$/.test(val),
+  codigo_postal:val => /^\d{4,10}$/.test(val),
+};
+
+function setError(id) {
+  const input = document.getElementById(id);
+  const err   = document.getElementById('err-' + id);
+  input.classList.remove('valid');
+  input.classList.add('error');
+  // Re-trigger shake animation
+  input.style.animation = 'none';
+  input.offsetHeight; // reflow
+  input.style.animation = '';
+  err.classList.add('visible');
+}
+
+function setValid(id) {
+  const input = document.getElementById(id);
+  const err   = document.getElementById('err-' + id);
+  input.classList.remove('error');
+  input.classList.add('valid');
+  err.classList.remove('visible');
+}
+
+function validarCampo(id) {
+  const val = document.getElementById(id).value.trim();
+  REGLAS[id](val) ? setValid(id) : setError(id);
+}
+
+// Eventos blur e input por campo
+CAMPOS.forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return; 
+  el.addEventListener('blur', () => validarCampo(id));
+  el.addEventListener('input', () => {
+    if (el.classList.contains('error')) validarCampo(id);
+  });
+});
 
 // ---------- CRUD: Crear / Modificar ----------
 
 async function createProveedor() {
+  // Validar todos los campos antes de enviar
+  const campos = ['nombre', 'direccion', 'telefono', 'email', 'codigo_postal'];
+  campos.forEach(id => validarCampo(id));
+
+  const hayError = campos.some(id => {
+    const el = document.getElementById(id);
+    return el.classList.contains('error') || !el.classList.contains('valid');
+  });
+
+  if (hayError) return; // Detiene el envío si hay errores
+
   const nuevoProveedor = {
-    nombre: document.getElementById("nombre")?.value || '',
-    direccion: document.getElementById("direccion")?.value || '',
-    telefono: document.getElementById("telefono")?.value || '',
-    email: document.getElementById("email")?.value || '',
-    codigo_postal: document.getElementById("codigo_postal")?.value || null
+    nombre:        document.getElementById("nombre").value.trim(),
+    direccion:     document.getElementById("direccion").value.trim(),
+    telefono:      document.getElementById("telefono").value.trim(),
+    email:         document.getElementById("email").value.trim(),
+    codigo_postal: document.getElementById("codigo_postal").value.trim()
   };
 
   try {
@@ -140,8 +197,33 @@ async function createProveedor() {
     window.location.href = "proveedor.html";
   } catch (error) {
     console.error("Error al crear proveedor:", error);
+
+    // Mostrar error duplicado u otro error del servidor
+    const banner = document.getElementById("mensaje-error-duplicado");
+    if (banner) {
+      banner.textContent = "Ocurrió un error al guardar el proveedor. Intentá de nuevo.";
+      banner.classList.add("visible");
+    }
   }
 }
+
+
+// async function createProveedor() {
+//   const nuevoProveedor = {
+//     nombre: document.getElementById("nombre")?.value,
+//     direccion: document.getElementById("direccion")?.value,
+//     telefono: document.getElementById("telefono")?.value,
+//     email: document.getElementById("email")?.value,
+//     codigo_postal: document.getElementById("codigo_postal")?.value
+//   };
+
+//   try {
+//     await window.proveedorAPI.addProveedor(nuevoProveedor);
+//     window.location.href = "proveedor.html";
+//   } catch (error) {
+//     console.error("Error al crear proveedor:", error);
+//   }
+// }
 
 function initFormSubmit() {
   const form = document.getElementById("form-agregar-proveedor");
