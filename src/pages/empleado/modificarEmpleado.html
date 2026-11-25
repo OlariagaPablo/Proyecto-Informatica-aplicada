@@ -15,18 +15,30 @@
 
     <div id="error-msg" class="error-notification"></div>
 
-    <form id="form-modificar-empleado" class="form-empleado">
-      <label for="mod-nombre">Nombre</label>
-      <input type="text" id="mod-nombre" required>
+    <form id="form-modificar-empleado" class="form-empleado" novalidate>
+      <div class="campo">
+        <label for="mod-nombre">Nombre</label>
+        <input type="text" id="mod-nombre" maxlength="50">
+        <span class="error-msg" id="err-mod-nombre">Ingresá un nombre válido (mínimo 2 letras).</span>
+      </div>
 
-      <label for="mod-apellido">Apellido</label>
-      <input type="text" id="mod-apellido" required>
+      <div class="campo">
+        <label for="mod-apellido">Apellido</label>
+        <input type="text" id="mod-apellido" maxlength="50">
+        <span class="error-msg" id="err-mod-apellido">Ingresá un apellido válido (mínimo 2 letras).</span>
+      </div>
 
-      <label for="mod-direccion">Dirección</label>
-      <input type="text" id="mod-direccion">
+      <div class="campo">
+        <label for="mod-direccion">Dirección</label>
+        <input type="text" id="mod-direccion" maxlength="100">
+        <span class="error-msg" id="err-mod-direccion">Ingresá una dirección válida (mínimo 3 caracteres).</span>
+      </div>
 
-      <label for="mod-codigo_postal">Código postal</label>
-      <input type="text" id="mod-codigo_postal">
+      <div class="campo">
+        <label for="mod-codigo_postal">Código postal</label>
+        <input type="text" id="mod-codigo_postal" maxlength="10" inputmode="numeric">
+        <span class="error-msg" id="err-mod-codigo_postal">Ingresá un código postal válido (4 a 10 dígitos).</span>
+      </div>
 
       <label>Especialidades</label>
       <div id="mod-especialidades-checkboxes" class="checkboxes-lista">

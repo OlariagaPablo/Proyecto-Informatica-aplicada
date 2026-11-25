@@ -17,6 +17,17 @@
     }
   }
 
+  // ---------- Origen del alta (empleados) ----------
+  function esOrigenEmpleados() {
+    return new URLSearchParams(window.location.search).get('origen') === 'empleados';
+  }
+
+  function volverAlOrigen() {
+    window.location.href = esOrigenEmpleados()
+      ? '../empleado/empleados.html'
+      : 'usuarios.html';
+  }
+
   // ---------- Navegación general ----------
   document.getElementById('home')?.addEventListener('click', () => {
     window.location.href = '../../index.html';
@@ -30,9 +41,7 @@
     window.location.href = 'usuarios.html';
   });
 
-  document.getElementById('btn-cancelar')?.addEventListener('click', () => {
-    window.location.href = 'usuarios.html';
-  });
+  document.getElementById('btn-cancelar')?.addEventListener('click', volverAlOrigen);
 
   document.getElementById('btn-cancelar-eliminar')?.addEventListener('click', () => {
     window.history.back();
@@ -48,6 +57,100 @@
     } else {
       alert(mensaje);
     }
+  }
+
+  // ---------- Validaciones de los datos del empleado ----------
+  const CAMPOS_EMPLEADO = ['nombre', 'apellido', 'direccion', 'codigo_postal'];
+
+  const REGLAS_EMPLEADO = {
+    nombre:        val => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\- ]{2,50}$/.test(val),
+    apellido:      val => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\- ]{2,50}$/.test(val),
+    direccion:     val => val.length >= 3 && val.length <= 100,
+    codigo_postal: val => /^\d{4,10}$/.test(val)
+  };
+
+  function setErrorEmpleado(id, mensaje) {
+    const input = document.getElementById(id);
+    const err = document.getElementById(`err-${id}`);
+    if (!input) return;
+
+    input.classList.remove('valid');
+    input.classList.add('error');
+
+    input.style.animation = 'none';
+    void input.offsetHeight;
+    input.style.animation = '';
+
+    if (err) {
+      err.textContent = mensaje || input.dataset.errorDefault || err.textContent;
+      err.classList.add('visible');
+    }
+  }
+
+  function setValidEmpleado(id) {
+    const input = document.getElementById(id);
+    const err = document.getElementById(`err-${id}`);
+    if (!input) return;
+
+    input.classList.remove('error');
+    input.classList.add('valid');
+
+    if (err) {
+      if (input.dataset.errorDefault) err.textContent = input.dataset.errorDefault;
+      err.classList.remove('visible');
+    }
+  }
+
+  function validarCampoEmpleado(id) {
+    const input = document.getElementById(id);
+    if (!input) return true;
+
+    const valido = REGLAS_EMPLEADO[id](input.value.trim());
+    valido ? setValidEmpleado(id) : setErrorEmpleado(id);
+    return valido;
+  }
+
+  function validarFormularioEmpleado() {
+    let valido = true;
+    let primerInvalido = null;
+
+    CAMPOS_EMPLEADO.forEach(campo => {
+      if (!validarCampoEmpleado(campo)) {
+        valido = false;
+        if (!primerInvalido) primerInvalido = document.getElementById(campo);
+      }
+    });
+
+    if (primerInvalido) primerInvalido.focus();
+    return valido;
+  }
+
+  function limpiarErroresEmpleado() {
+    CAMPOS_EMPLEADO.forEach(campo => {
+      document.getElementById(campo)?.classList.remove('error', 'valid');
+      document.getElementById(`err-${campo}`)?.classList.remove('visible');
+    });
+  }
+
+  function inicializarValidacionesEmpleado() {
+    CAMPOS_EMPLEADO.forEach(campo => {
+      const input = document.getElementById(campo);
+      const err = document.getElementById(`err-${campo}`);
+      if (!input) return;
+
+      if (err && !input.dataset.errorDefault) {
+        input.dataset.errorDefault = err.textContent.trim();
+      }
+
+      input.addEventListener('blur', () => validarCampoEmpleado(campo));
+      input.addEventListener('input', () => {
+        if (input.classList.contains('error')) validarCampoEmpleado(campo);
+      });
+    });
+  }
+
+  function valorCampoEmpleado(campo) {
+    return (document.getElementById(campo)?.value || '').trim();
   }
 
   // ---------- Listado ----------
@@ -107,6 +210,9 @@
 
   // ---------- Alta ----------
   async function createUsuario() {
+    const errorDiv = document.getElementById('error-msg');
+    if (errorDiv) errorDiv.style.display = 'none';
+
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const rol = document.getElementById('rol').value;
@@ -122,18 +228,18 @@
       rol
     };
 
-    // Si es empleado agregamos los datos adicionales
+    // Si es empleado agregamos y validamos los datos adicionales
     if (rol === "empleado") {
 
-      usuario.nombre = document.getElementById("nombre").value.trim();
-      usuario.apellido = document.getElementById("apellido").value.trim();
-      usuario.direccion = document.getElementById("direccion").value.trim();
-      usuario.codigo_postal = document.getElementById("codigo_postal").value.trim();
-
-      if (!usuario.nombre || !usuario.apellido) {
-        mostrarError("Nombre y apellido son obligatorios.");
+      if (!validarFormularioEmpleado()) {
+        mostrarError("Revisá los datos del empleado marcados en rojo.");
         return;
       }
+
+      usuario.nombre = valorCampoEmpleado("nombre");
+      usuario.apellido = valorCampoEmpleado("apellido");
+      usuario.direccion = valorCampoEmpleado("direccion");
+      usuario.codigo_postal = valorCampoEmpleado("codigo_postal");
 
       usuario.especialidades = Array.from(
         document.querySelectorAll(
@@ -142,12 +248,25 @@
       ).map(cb => Number(cb.value));
     }
 
+    const btnGuardar = document.querySelector('#form-agregar-usuario button[type="submit"]');
+    const textoBoton = btnGuardar?.textContent;
+
+    if (btnGuardar) {
+      btnGuardar.disabled = true;
+      btnGuardar.textContent = 'Guardando...';
+    }
+
     try {
       await window.usuariosAPI.addUsuario(usuario);
-      window.location.href = "usuarios.html";
+      volverAlOrigen();
     } catch (error) {
       console.error(error);
       mostrarError(error.message || "No se pudo crear el usuario.");
+    } finally {
+      if (btnGuardar) {
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = textoBoton;
+      }
     }
   }
 
@@ -192,6 +311,8 @@
 
   if (!form || !rol || !datosEmpleado) return;
 
+  inicializarValidacionesEmpleado();
+
   rol.addEventListener("change", async () => {
 
     if (rol.value === "empleado") {
@@ -202,6 +323,7 @@
     } else {
 
       datosEmpleado.classList.remove("activo");
+      limpiarErroresEmpleado();
 
     }
 

@@ -950,16 +950,20 @@ export const updateEmpleado = (id, data) => {
   return new Promise((resolve, reject) => {
     const database = getDbOrThrow();
     const { especialidades, ...camposEmpleado } = data;
- 
+    const hayCampos = Object.keys(camposEmpleado).length > 0;
+
     const aplicarDatosBasicos = () => {
       return new Promise((res, rej) => {
-        if (Object.keys(camposEmpleado).length === 0) return res();
+        if (!hayCampos) return res(null);
         const fields = Object.keys(camposEmpleado).map((key) => `${key} = ?`).join(', ');
         const values = Object.values(camposEmpleado);
         database.run(
           `UPDATE Empleado SET ${fields} WHERE id_empleado = ?`,
           [...values, id],
-          (err) => (err ? rej(err) : res())
+          function (err) {
+            if (err) return rej(err);
+            res(this.changes);
+          }
         );
       });
     };
@@ -987,8 +991,15 @@ export const updateEmpleado = (id, data) => {
     };
  
     aplicarDatosBasicos()
-      .then(aplicarEspecialidades)
-      .then(() => resolve({ changes: 1 }))
+      .then((changes) => {
+        // Si se intentó actualizar datos y el empleado no existe,
+        // no tocamos las especialidades (evita relaciones huérfanas).
+        if (hayCampos && changes === 0) {
+          return { changes: 0 };
+        }
+        return aplicarEspecialidades().then(() => ({ changes: 1 }));
+      })
+      .then(resolve)
       .catch(reject);
   });
 };
