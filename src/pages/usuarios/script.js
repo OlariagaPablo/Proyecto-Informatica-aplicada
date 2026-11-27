@@ -59,8 +59,15 @@
     }
   }
 
-  // ---------- Validaciones de los datos del empleado ----------
+  // ---------- Validaciones del formulario de alta ----------
+  const CAMPOS_USUARIO = ['email', 'password', 'rol'];
   const CAMPOS_EMPLEADO = ['nombre', 'apellido', 'direccion', 'codigo_postal'];
+
+  const REGLAS_USUARIO = {
+    email:    val => val.length <= 254 && /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(val),
+    password: val => val.length >= 6 && val.length <= 64 && /\S/.test(val),
+    rol:      val => val === 'administrador' || val === 'empleado'
+  };
 
   const REGLAS_EMPLEADO = {
     nombre:        val => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\- ]{2,50}$/.test(val),
@@ -69,7 +76,7 @@
     codigo_postal: val => /^\d{4,10}$/.test(val)
   };
 
-  function setErrorEmpleado(id, mensaje) {
+  function setError(id, mensaje) {
     const input = document.getElementById(id);
     const err = document.getElementById(`err-${id}`);
     if (!input) return;
@@ -87,7 +94,7 @@
     }
   }
 
-  function setValidEmpleado(id) {
+  function setValid(id) {
     const input = document.getElementById(id);
     const err = document.getElementById(`err-${id}`);
     if (!input) return;
@@ -101,39 +108,50 @@
     }
   }
 
-  function validarCampoEmpleado(id) {
+  function valorCampo(id) {
+    return (document.getElementById(id)?.value || '').trim();
+  }
+
+  function validarCampo(id, reglas) {
     const input = document.getElementById(id);
     if (!input) return true;
 
-    const valido = REGLAS_EMPLEADO[id](input.value.trim());
-    valido ? setValidEmpleado(id) : setErrorEmpleado(id);
+    // La contraseña se valida sin recortar: los espacios forman parte del valor.
+    const valor = id === 'password' ? input.value : input.value.trim();
+    const valido = reglas[id](valor);
+    valido ? setValid(id) : setError(id);
     return valido;
   }
 
-  function validarFormularioEmpleado() {
-    let valido = true;
+  // Devuelve el primer campo inválido (o null si todos son válidos).
+  function validarCampos(campos, reglas) {
     let primerInvalido = null;
 
-    CAMPOS_EMPLEADO.forEach(campo => {
-      if (!validarCampoEmpleado(campo)) {
-        valido = false;
-        if (!primerInvalido) primerInvalido = document.getElementById(campo);
+    campos.forEach(campo => {
+      if (!validarCampo(campo, reglas) && !primerInvalido) {
+        primerInvalido = document.getElementById(campo);
       }
     });
 
-    if (primerInvalido) primerInvalido.focus();
-    return valido;
+    return primerInvalido;
   }
 
-  function limpiarErroresEmpleado() {
-    CAMPOS_EMPLEADO.forEach(campo => {
-      document.getElementById(campo)?.classList.remove('error', 'valid');
-      document.getElementById(`err-${campo}`)?.classList.remove('visible');
+  function limpiarErrores(campos) {
+    campos.forEach(campo => {
+      const input = document.getElementById(campo);
+      const err = document.getElementById(`err-${campo}`);
+      if (!input) return;
+
+      input.classList.remove('error', 'valid');
+      if (err) {
+        if (input.dataset.errorDefault) err.textContent = input.dataset.errorDefault;
+        err.classList.remove('visible');
+      }
     });
   }
 
-  function inicializarValidacionesEmpleado() {
-    CAMPOS_EMPLEADO.forEach(campo => {
+  function inicializarValidaciones(campos, reglas) {
+    campos.forEach(campo => {
       const input = document.getElementById(campo);
       const err = document.getElementById(`err-${campo}`);
       if (!input) return;
@@ -142,15 +160,33 @@
         input.dataset.errorDefault = err.textContent.trim();
       }
 
-      input.addEventListener('blur', () => validarCampoEmpleado(campo));
-      input.addEventListener('input', () => {
-        if (input.classList.contains('error')) validarCampoEmpleado(campo);
+      const evento = input.tagName === 'SELECT' ? 'change' : 'input';
+
+      input.addEventListener('blur', () => validarCampo(campo, reglas));
+      input.addEventListener(evento, () => {
+        if (input.classList.contains('error')) validarCampo(campo, reglas);
       });
     });
   }
 
-  function valorCampoEmpleado(campo) {
-    return (document.getElementById(campo)?.value || '').trim();
+  // Quita el prefijo que agrega Electron a los errores de IPC.
+  function mensajeDeError(error) {
+    const mensaje = error?.message || '';
+    return mensaje.split('Error: ').pop() || 'No se pudo crear el usuario.';
+  }
+
+  async function emailYaRegistrado(email) {
+    try {
+      const usuarios = await window.usuariosAPI.getUsuarios();
+      const normalizado = email.trim().toLowerCase();
+      return usuarios.some(
+        u => String(u.email || '').trim().toLowerCase() === normalizado
+      );
+    } catch (error) {
+      // Si la consulta falla, el UNIQUE del backend sigue siendo la red de seguridad.
+      console.error('No se pudo verificar el email duplicado:', error);
+      return false;
+    }
   }
 
   // ---------- Listado ----------
@@ -209,37 +245,37 @@
   }
 
   // ---------- Alta ----------
+  let altaEnCurso = false;
+
   async function createUsuario() {
+    if (altaEnCurso) return;
+
     const errorDiv = document.getElementById('error-msg');
     if (errorDiv) errorDiv.style.display = 'none';
 
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
     const rol = document.getElementById('rol').value;
+    const invalidoUsuario = validarCampos(CAMPOS_USUARIO, REGLAS_USUARIO);
+    const invalidoEmpleado = rol === 'empleado'
+      ? validarCampos(CAMPOS_EMPLEADO, REGLAS_EMPLEADO)
+      : null;
 
-    if (!email || !password || !rol) {
-      mostrarError("Todos los campos son obligatorios.");
+    if (invalidoUsuario || invalidoEmpleado) {
+      (invalidoUsuario || invalidoEmpleado).focus();
+      mostrarError('Revisá los campos marcados en rojo.');
       return;
     }
 
-    const usuario = {
-      email,
-      password,
-      rol
-    };
+    const email = valorCampo('email').toLowerCase();
+    const password = document.getElementById('password').value;
 
-    // Si es empleado agregamos y validamos los datos adicionales
+    const usuario = { email, password, rol };
+
+    // Si es empleado agregamos los datos adicionales
     if (rol === "empleado") {
-
-      if (!validarFormularioEmpleado()) {
-        mostrarError("Revisá los datos del empleado marcados en rojo.");
-        return;
-      }
-
-      usuario.nombre = valorCampoEmpleado("nombre");
-      usuario.apellido = valorCampoEmpleado("apellido");
-      usuario.direccion = valorCampoEmpleado("direccion");
-      usuario.codigo_postal = valorCampoEmpleado("codigo_postal");
+      usuario.nombre = valorCampo("nombre");
+      usuario.apellido = valorCampo("apellido");
+      usuario.direccion = valorCampo("direccion");
+      usuario.codigo_postal = valorCampo("codigo_postal");
 
       usuario.especialidades = Array.from(
         document.querySelectorAll(
@@ -251,22 +287,40 @@
     const btnGuardar = document.querySelector('#form-agregar-usuario button[type="submit"]');
     const textoBoton = btnGuardar?.textContent;
 
-    if (btnGuardar) {
-      btnGuardar.disabled = true;
-      btnGuardar.textContent = 'Guardando...';
+    function setGuardando(activo) {
+      if (!btnGuardar) return;
+      btnGuardar.disabled = activo;
+      btnGuardar.textContent = activo ? 'Guardando...' : textoBoton;
     }
 
+    setGuardando(true);
+    altaEnCurso = true;
+
     try {
+      if (await emailYaRegistrado(email)) {
+        setError('email', 'Ya existe un usuario con este email.');
+        document.getElementById('email')?.focus();
+        mostrarError('Ya existe un usuario con este email.');
+        return;
+      }
+
       await window.usuariosAPI.addUsuario(usuario);
       volverAlOrigen();
     } catch (error) {
       console.error(error);
-      mostrarError(error.message || "No se pudo crear el usuario.");
-    } finally {
-      if (btnGuardar) {
-        btnGuardar.disabled = false;
-        btnGuardar.textContent = textoBoton;
+      const mensaje = mensajeDeError(error);
+
+      if (/UNIQUE constraint failed: Usuarios\.email/i.test(mensaje) ||
+          /Ya existe un usuario con este email/i.test(mensaje)) {
+        setError('email', 'Ya existe un usuario con este email.');
+        document.getElementById('email')?.focus();
+        mostrarError('Ya existe un usuario con este email.');
+      } else {
+        mostrarError(mensaje);
       }
+    } finally {
+      altaEnCurso = false;
+      setGuardando(false);
     }
   }
 
@@ -311,9 +365,13 @@
 
   if (!form || !rol || !datosEmpleado) return;
 
-  inicializarValidacionesEmpleado();
+  inicializarValidaciones(CAMPOS_USUARIO, REGLAS_USUARIO);
+  inicializarValidaciones(CAMPOS_EMPLEADO, REGLAS_EMPLEADO);
 
   rol.addEventListener("change", async () => {
+
+    const errorDiv = document.getElementById('error-msg');
+    if (errorDiv) errorDiv.style.display = 'none';
 
     if (rol.value === "empleado") {
 
@@ -323,7 +381,7 @@
     } else {
 
       datosEmpleado.classList.remove("activo");
-      limpiarErroresEmpleado();
+      limpiarErrores(CAMPOS_EMPLEADO);
 
     }
 
