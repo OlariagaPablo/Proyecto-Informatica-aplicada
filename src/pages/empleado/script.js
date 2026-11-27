@@ -430,7 +430,13 @@ if (document.getElementById('btn-confirmar-eliminar')) {
 
     try {
 
-      await window.empleadosAPI.deleteEmpleado(idNumerico);
+      const resultado = await window.empleadosAPI.deleteEmpleado(idNumerico);
+
+      if (!resultado || resultado.changes === 0) {
+        mostrarError('El empleado ya no existe o ya estaba desactivado.');
+        btnConfirmar.textContent = 'Desactivado';
+        return;
+      }
 
       window.location.href = './empleados.html';
 

@@ -291,6 +291,12 @@
   .btn-cancelar:hover {
     background: #ef9a9a;
   }
+  .btn-cancelar:disabled,
+  .btn-cancelar:disabled:hover {
+    background: #eee;
+    color: #999;
+    cursor: not-allowed;
+  }
   
   .btn-guardar {
     background: #c8e6c9;

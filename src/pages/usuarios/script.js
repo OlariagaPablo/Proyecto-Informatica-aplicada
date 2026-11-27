@@ -44,7 +44,7 @@
   document.getElementById('btn-cancelar')?.addEventListener('click', volverAlOrigen);
 
   document.getElementById('btn-cancelar-eliminar')?.addEventListener('click', () => {
-    window.history.back();
+    window.location.href = 'usuarios.html';
   });
 
   // ---------- Soporte de errores (mismo patrón que Clientes) ----------
@@ -228,7 +228,7 @@
         </div>
         <div class="usuario-actions">
           <button class="btn-cancelar btn-desactivar" value="${usuario.id_usuario}" ${usuario.activo ? '' : 'disabled'}>
-            Desactivar
+            ${usuario.activo ? 'Desactivar' : 'Desactivado'}
           </button>
         </div>
       `;
@@ -394,27 +394,53 @@
 }
   // ---------- Baja (lógica: activo = 0) ----------
   function initFormEliminar() {
-    const form = document.getElementById('form-eliminar-usuario');
-    if (!form) return;
+    const btnConfirmar = document.getElementById('btn-confirmar-eliminar');
+    if (!btnConfirmar) return;
 
     const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
+    const idUsuario = params.get('id');
+    const idNumerico = Number(idUsuario);
+    const idValido =
+      idUsuario !== null &&
+      String(idUsuario).trim() !== '' &&
+      Number.isInteger(idNumerico) &&
+      idNumerico > 0;
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!id) {
-        alert('No se encontró el usuario a desactivar.');
-        return;
-      }
+    if (!idValido) {
+      mostrarError('No se encontró el usuario a desactivar.');
+      btnConfirmar.disabled = true;
+      return;
+    }
+
+    let desactivando = false;
+
+    btnConfirmar.addEventListener('click', async () => {
+      if (desactivando) return;
+      desactivando = true;
+
+      const textoBoton = btnConfirmar.textContent;
+      btnConfirmar.disabled = true;
+      btnConfirmar.textContent = 'Desactivando...';
+
       try {
-        await window.usuariosAPI.deleteUsuario(id);
+        const resultado = await window.usuariosAPI.deleteUsuario(idNumerico);
+
+        if (!resultado || resultado.changes === 0) {
+          mostrarError('El usuario ya no existe o ya estaba desactivado.');
+          btnConfirmar.textContent = 'Desactivado';
+          return;
+        }
+
         window.location.href = 'usuarios.html';
       } catch (error) {
         console.error('Error al desactivar usuario:', error);
-        alert(error.message || 'No se pudo desactivar el usuario.');
+        mostrarError(error.message || 'No se pudo desactivar el usuario.');
+        btnConfirmar.disabled = false;
+        btnConfirmar.textContent = textoBoton;
+      } finally {
+        desactivando = false;
       }
     });
-    
   }
 
   // ---------- Inicialización ----------
