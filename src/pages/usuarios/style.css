@@ -226,14 +226,16 @@
     border-color: #7b1fa2;
   }
 
-  /* Estados de validación de los datos del empleado */
-  .form-usuario input.error {
+  /* Estados de validación del formulario */
+  .form-usuario input.error,
+  .form-usuario select.error {
     border-color: #e53e3e;
     box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.15);
     animation: shake 0.3s ease;
   }
 
-  .form-usuario input.valid {
+  .form-usuario input.valid,
+  .form-usuario select.valid {
     border-color: #38a169;
     box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.15);
   }

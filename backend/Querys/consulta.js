@@ -84,13 +84,83 @@ function getDbOrThrow() {
 // ===  FUNCIONES DE USUARIOS  ========
 // ======================================
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+const ROLES_VALIDOS = ["administrador", "empleado"];
+const REGEX_NOMBRE = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'\- ]{2,50}$/;
+
+function normalizarEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function validarEmail(email) {
+  const normalizado = normalizarEmail(email);
+  if (normalizado.length > 254 || !EMAIL_REGEX.test(normalizado)) {
+    throw new Error("Ingresá un correo electrónico válido.");
+  }
+  return normalizado;
+}
+
+function validarPassword(password) {
+  const valor = typeof password === "string" ? password : "";
+  if (valor.length < 6 || valor.length > 64 || !/\S/.test(valor)) {
+    throw new Error("La contraseña debe tener entre 6 y 64 caracteres.");
+  }
+  return valor;
+}
+
+function validarRol(rol) {
+  if (!ROLES_VALIDOS.includes(rol)) {
+    throw new Error("Seleccioná un rol válido.");
+  }
+  return rol;
+}
+
+function validarDatosEmpleado(datos) {
+  const nombre = String(datos.nombre || "").trim();
+  const apellido = String(datos.apellido || "").trim();
+  const direccion = String(datos.direccion || "").trim();
+  const codigo_postal = String(datos.codigo_postal || "").trim();
+
+  if (!REGEX_NOMBRE.test(nombre)) {
+    throw new Error("Ingresá un nombre válido (mínimo 2 letras).");
+  }
+  if (!REGEX_NOMBRE.test(apellido)) {
+    throw new Error("Ingresá un apellido válido (mínimo 2 letras).");
+  }
+  if (direccion.length < 3 || direccion.length > 100) {
+    throw new Error("Ingresá una dirección válida (mínimo 3 caracteres).");
+  }
+  if (!/^\d{4,10}$/.test(codigo_postal)) {
+    throw new Error("Ingresá un código postal válido (4 a 10 dígitos).");
+  }
+
+  return { nombre, apellido, direccion, codigo_postal };
+}
+
 export const createUsuario = (usuario) => {
   return new Promise(async (resolve, reject) => {
+    let datos;
+    let empleado = null;
+
+    try {
+      const email = validarEmail(usuario?.email);
+      const rol = validarRol(usuario?.rol);
+      const password = validarPassword(usuario?.password);
+
+      datos = { ...usuario, email, rol, password };
+
+      if (rol === "empleado") {
+        empleado = validarDatosEmpleado(usuario);
+      }
+    } catch (err) {
+      return reject(err);
+    }
+
     const database = getDbOrThrow();
 
     let hash;
     try {
-      hash = await bcrypt.hash(usuario.password, SALT_ROUNDS);
+      hash = await bcrypt.hash(datos.password, SALT_ROUNDS);
     } catch (err) {
       return reject(err);
     }
@@ -100,22 +170,25 @@ export const createUsuario = (usuario) => {
 
       database.run(
         "INSERT INTO Usuarios (email, password_hash, rol) VALUES (?, ?, ?)",
-        [usuario.email, hash, usuario.rol],
+        [datos.email, hash, datos.rol],
         function (err) {
           if (err) {
             database.run("ROLLBACK");
+            if (/UNIQUE constraint failed: Usuarios\.email/i.test(err.message || "")) {
+              return reject(new Error("Ya existe un usuario con este email."));
+            }
             return reject(err);
           }
 
           const idUsuario = this.lastID;
 
           // Si es administrador termina acá
-          if (usuario.rol === "administrador") {
+          if (datos.rol === "administrador") {
             database.run("COMMIT");
             return resolve({
               id_usuario: idUsuario,
-              email: usuario.email,
-              rol: usuario.rol
+              email: datos.email,
+              rol: datos.rol
             });
           }
 
@@ -126,10 +199,10 @@ export const createUsuario = (usuario) => {
             VALUES (?, ?, ?, ?, ?)`,
             [
               idUsuario,
-              usuario.nombre,
-              usuario.apellido,
-              usuario.direccion || null,
-              usuario.codigo_postal || null
+              empleado.nombre,
+              empleado.apellido,
+              empleado.direccion,
+              empleado.codigo_postal
             ],
             function (err) {
               if (err) {
@@ -138,7 +211,11 @@ export const createUsuario = (usuario) => {
               }
 
               const idEmpleado = this.lastID;
-              const especialidades = usuario.especialidades || [];
+              const especialidades = Array.isArray(usuario.especialidades)
+                ? usuario.especialidades
+                    .map(Number)
+                    .filter((idEsp) => Number.isInteger(idEsp) && idEsp > 0)
+                : [];
 
               if (especialidades.length === 0) {
                 database.run("COMMIT");
@@ -192,8 +269,8 @@ export const loginUsuario = (email, password) => {
   return new Promise((resolve, reject) => {
     const database = getDbOrThrow();
     database.get(
-      'SELECT * FROM Usuarios WHERE email = ? AND activo = 1',
-      [email],
+      'SELECT * FROM Usuarios WHERE lower(email) = ? AND activo = 1',
+      [normalizarEmail(email)],
       (err, row) => {
         if (err) return reject(err);
         if (!row) return resolve(null);
@@ -227,19 +304,40 @@ export const updateUsuario = (id, data) => {
   return new Promise(async (resolve, reject) => {
     try {
       const database = getDbOrThrow();
-      const campos = { ...data };
+      const campos = { ...(data || {}) };
+
+      if (campos.email !== undefined) {
+        campos.email = validarEmail(campos.email);
+      }
+
+      if (campos.rol !== undefined) {
+        campos.rol = validarRol(campos.rol);
+      }
+
       if (campos.password) {
-        campos.password_hash = await bcrypt.hash(campos.password, SALT_ROUNDS);
+        campos.password_hash = await bcrypt.hash(validarPassword(campos.password), SALT_ROUNDS);
+        delete campos.password;
+      } else {
         delete campos.password;
       }
+
+      if (Object.keys(campos).length === 0) {
+        return resolve({ changes: 0 });
+      }
+
       const fields = Object.keys(campos).map((key) => `${key} = ?`).join(', ');
       const values = Object.values(campos);
       database.run(
         `UPDATE Usuarios SET ${fields} WHERE id_usuario = ?`,
         [...values, id],
         function (err) {
-          if (err) reject(err);
-          else resolve({ changes: this.changes });
+          if (err) {
+            if (/UNIQUE constraint failed: Usuarios\.email/i.test(err.message || "")) {
+              return reject(new Error("Ya existe un usuario con este email."));
+            }
+            return reject(err);
+          }
+          resolve({ changes: this.changes });
         }
       );
     } catch (err) {
