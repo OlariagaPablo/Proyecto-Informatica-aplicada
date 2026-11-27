@@ -225,6 +225,50 @@
   .form-usuario select:focus {
     border-color: #7b1fa2;
   }
+
+  /* Estados de validación de los datos del empleado */
+  .form-usuario input.error {
+    border-color: #e53e3e;
+    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.15);
+    animation: shake 0.3s ease;
+  }
+
+  .form-usuario input.valid {
+    border-color: #38a169;
+    box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.15);
+  }
+
+  .error-msg {
+    display: none;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 5px;
+    font-size: 0.82rem;
+    color: #e53e3e;
+    font-weight: 500;
+  }
+
+  .error-msg.visible {
+    display: flex;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .error-msg::before {
+    content: "⚠";
+    font-size: 0.9rem;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-5px); }
+    50%      { transform: translateX(5px); }
+    75%      { transform: translateX(-3px); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   
   .form-botones {
     display: flex;
